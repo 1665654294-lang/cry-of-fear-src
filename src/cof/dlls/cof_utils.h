@@ -14,7 +14,10 @@
 
 inline BOOL COF_HasText( string_t iszText )
 {
-	return !FStringNull( iszText ) && STRING( iszText )[0] != '\0';
+	if( FStringNull( iszText ) )
+		return FALSE;
+	const char* szText = STRING( iszText );
+	return szText && szText[0] != '\0';
 }
 
 inline CBasePlayer *COF_PlayerFromEntity( CBaseEntity *pEntity )

@@ -37,6 +37,10 @@ jobs:
         run: |
           cmake -S external/openvgui -B build/openvgui-linux -DCMAKE_BUILD_TYPE=Release
           cmake --build build/openvgui-linux --parallel $(nproc)
+          # Ensure a copy or symlink of the library named vgui.so is at the root of the build folder
+          if [ ! -f build/openvgui-linux/vgui.so ]; then
+            find build/openvgui-linux -type f \( -name "libvgui.so" -o -name "libvgui*.so" \) -exec ln -sf {} build/openvgui-linux/vgui.so \;
+          fi
 
       - name: Build Linux Game DLLs (64-bit)
         run: |

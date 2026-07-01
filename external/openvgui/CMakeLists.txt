@@ -44,6 +44,7 @@ if(VGUI_STATIC)
 	add_library(vgui STATIC ${VGUI_SRC})
 else()
 	add_library(vgui SHARED ${VGUI_SRC})
+	set_target_properties(vgui PROPERTIES PREFIX "")
 
 	install(TARGETS vgui DESTINATION ".")
 
