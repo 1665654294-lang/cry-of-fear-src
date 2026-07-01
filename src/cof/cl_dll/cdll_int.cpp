@@ -274,7 +274,9 @@ int DLLEXPORT HUD_VidInit( void )
 #elif USE_VGUI
 	VGui_Startup();
 #endif
+#if USE_VGUI
 	COF_Inventory_VidInit();
+#endif
 	return 1;
 }
 
@@ -309,7 +311,9 @@ redraw the HUD.
 int DLLEXPORT HUD_Redraw( float time, int intermission )
 {
 	gHUD.Redraw( time, intermission );
+#if USE_VGUI
 	COF_Inventory_Draw( time );
+#endif
 
 	return 1;
 }

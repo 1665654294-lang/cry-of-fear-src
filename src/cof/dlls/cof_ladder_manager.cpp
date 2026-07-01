@@ -175,7 +175,8 @@ void CCOFLadderManager::Spawn( void )
 
 BOOL CCOFLadderManager::HasModel( void ) const
 {
-	return !FStringNull( pev->model ) && STRING( pev->model )[0] != '\0';
+	const char *pModel = STRING( pev->model );
+	return !FStringNull( pev->model ) && pModel && pModel[0] != '\0';
 }
 
 void CCOFLadderManager::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
