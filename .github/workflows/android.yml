@@ -1,0 +1,131 @@
+name: Build Android and Linux Libraries
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - dev
+      - 'feature/**'
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+jobs:
+  build-linux:
+    name: Build Linux .so Game Libraries
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Install Linux Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build build-essential \
+            libsdl2-dev libfreetype6-dev libopus-dev libbz2-dev libvorbis-dev libopusfile-dev libogg-dev
+
+      - name: Build Linux openvgui
+        run: |
+          cmake -S external/openvgui -B build/openvgui-linux -DCMAKE_BUILD_TYPE=Release
+          cmake --build build/openvgui-linux --parallel $(nproc)
+
+      - name: Build Linux Game DLLs (64-bit)
+        run: |
+          cmake -S src/cof -B build/cof-linux64 \
+            -DCMAKE_BUILD_TYPE=Release \
+            -D64BIT=ON \
+            -DGAMEDIR=cryoffear \
+            -DCMAKE_INSTALL_PREFIX="$PWD/out/xash3d" \
+            -DSERVER_INSTALL_DIR=cl_dlls \
+            -DCLIENT_INSTALL_DIR=cl_dlls \
+            -DUSE_VGUI=ON \
+            -DUSE_NOVGUI_MOTD=ON \
+            -DUSE_NOVGUI_SCOREBOARD=ON \
+            -DOPENVGUI_ROOT="$PWD/external/openvgui" \
+            -DOPENVGUI_BUILD_DIR="$PWD/build/openvgui-linux"
+          cmake --build build/cof-linux64 --parallel $(nproc) --target install
+
+      - name: Upload Linux .so Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: cry-of-fear-linux-so-libs
+          path: out/xash3d/cryoffear/cl_dlls/*.so
+
+  build-android:
+    name: Build Android APK & .so Libraries
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'gradle'
+
+      - name: Setup Android NDK
+        uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: 'r26b'
+          link-to-sdk: true
+
+      - name: Install Build Tools (CMake & Ninja)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build
+
+      - name: Grant Execute Permission to Gradle Wrapper
+        run: chmod +x src/cof/android/gradlew
+
+      - name: Build Android APK (Release & Debug)
+        run: |
+          cd src/cof/android
+          ./gradlew assembleDebug assembleRelease
+
+      - name: Copy Android .so Libraries
+        run: |
+          mkdir -p out/android/release
+          mkdir -p out/android/debug
+          
+          # Copy release stripped libraries
+          find src/cof/android/app/build -path "*/stripped_native_libs/release/*" -name "*.so" -type f | while read -r file; do
+            abi=$(basename "$(dirname "$file")")
+            mkdir -p "out/android/release/$abi"
+            cp "$file" "out/android/release/$abi/"
+          done
+          
+          # Copy debug libraries (optional)
+          find src/cof/android/app/build -path "*/stripped_native_libs/debug/*" -name "*.so" -type f | while read -r file; do
+            abi=$(basename "$(dirname "$file")")
+            mkdir -p "out/android/debug/$abi"
+            cp "$file" "out/android/debug/$abi/"
+          done
+
+      - name: Upload Android APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: cry-of-fear-android-apks
+          path: |
+            src/cof/android/app/build/outputs/apk/debug/*.apk
+            src/cof/android/app/build/outputs/apk/release/*.apk
+
+      - name: Upload Android .so Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: cry-of-fear-android-so-libs
+          path: out/android/
